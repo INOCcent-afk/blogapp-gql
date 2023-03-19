@@ -1,5 +1,6 @@
 import { Post, Prisma } from "@prisma/client";
-import { Context } from "../index";
+import { Context } from "../../index";
+import { canUserMutatePost } from "../../utils/canUserMutatePost";
 
 interface PostArgs {
 	post: {
@@ -13,12 +14,23 @@ interface PostPayloadType {
 	post: null | Prisma.Prisma__PostClient<Post, never> | Post;
 }
 
-export const Mutation = {
+export const postResolvers = {
 	postCreate: async (
 		_: any,
 		{ post }: PostArgs,
-		{ prisma }: Context
+		{ prisma, userInfo }: Context
 	): Promise<PostPayloadType> => {
+		if (!userInfo) {
+			return {
+				userErrors: [
+					{
+						message: "Forbidden access (unauthenticated)",
+					},
+				],
+				post: null,
+			};
+		}
+
 		const { title, content } = post;
 		if (!title || !content) {
 			return {
@@ -38,7 +50,7 @@ export const Mutation = {
 				data: {
 					title,
 					content,
-					authorId: 1,
+					authorId: userInfo.userId,
 				},
 			}),
 		};
@@ -46,8 +58,27 @@ export const Mutation = {
 	postUpdate: async (
 		_: any,
 		{ post, postId }: { postId: string; post: PostArgs["post"] },
-		{ prisma }: Context
+		{ prisma, userInfo }: Context
 	): Promise<PostPayloadType> => {
+		if (!userInfo) {
+			return {
+				userErrors: [
+					{
+						message: "Forbidden access (unauthenticated)",
+					},
+				],
+				post: null,
+			};
+		}
+
+		const error = await canUserMutatePost({
+			userId: userInfo.userId,
+			postId: Number(postId),
+			prisma,
+		});
+
+		if (error) return error;
+
 		const { title, content } = post;
 
 		if (!title && !content) {
@@ -101,8 +132,27 @@ export const Mutation = {
 	postDelete: async (
 		_: any,
 		{ postId }: { postId: string },
-		{ prisma }: Context
+		{ prisma, userInfo }: Context
 	): Promise<PostPayloadType> => {
+		if (!userInfo) {
+			return {
+				userErrors: [
+					{
+						message: "Forbidden access (unauthenticated)",
+					},
+				],
+				post: null,
+			};
+		}
+
+		const error = await canUserMutatePost({
+			userId: userInfo.userId,
+			postId: Number(postId),
+			prisma,
+		});
+
+		if (error) return error;
+
 		const post = await prisma.post.findUnique({
 			where: {
 				id: Number(postId),
