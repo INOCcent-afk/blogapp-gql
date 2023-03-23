@@ -14,7 +14,7 @@ Platform:
   win32 x64
 
 Trace: 
-  Error: connect ETIMEDOUT 104.16.16.35:443
+  Error: connect ECONNABORTED 104.16.19.35:443
       at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1278:16)
 
 npm manifest: 
